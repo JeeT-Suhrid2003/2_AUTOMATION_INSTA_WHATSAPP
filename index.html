@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Send a WhatsApp message</title>
+<style>
+  :root {
+    --bg: #eef2ee; --card: #ffffff; --ink: #14201a; --muted: #5b6b62;
+    --line: #cfd9d2; --accent: #0f6b4f; --accent-ink: #ffffff;
+    --ok-bg: #dff3e8; --ok-ink: #0b4a35; --err-bg: #fbe3e1; --err-ink: #7a1d16;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101713; --card: #18221c; --ink: #e8f0ea; --muted: #93a499;
+      --line: #2b3a31; --accent: #3fbf8f; --accent-ink: #08140e;
+      --ok-bg: #153325; --ok-ink: #bfeed7; --err-bg: #3a1a17; --err-ink: #f6c9c4;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--ink);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  main { width: 100%; max-width: 460px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 14px; padding: 26px; }
+  h1 { font-size: 1.35rem; margin: 0 0 4px; }
+  p.sub { margin: 0 0 20px; color: var(--muted); font-size: .92rem; }
+  label { display: block; font-size: .85rem; font-weight: 600; margin: 14px 0 5px; }
+  input, textarea {
+    width: 100%; padding: 10px 12px; font: inherit; color: var(--ink);
+    background: transparent; border: 1px solid var(--line); border-radius: 8px;
+  }
+  input:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  textarea { min-height: 96px; resize: vertical; }
+  .hint { font-size: .78rem; color: var(--muted); margin-top: 4px; }
+  details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+  summary { cursor: pointer; font-size: .88rem; color: var(--muted); }
+  button {
+    margin-top: 20px; width: 100%; padding: 12px; font: inherit; font-weight: 600;
+    background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px; cursor: pointer;
+  }
+  button:disabled { opacity: .6; cursor: wait; }
+  #result { margin-top: 16px; padding: 11px 13px; border-radius: 8px; font-size: .88rem;
+    display: none; white-space: pre-wrap; word-break: break-word; }
+  #result.ok { display: block; background: var(--ok-bg); color: var(--ok-ink); }
+  #result.err { display: block; background: var(--err-bg); color: var(--err-ink); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Send a WhatsApp message</h1>
+  <p class="sub">Sends through your own WAHA server running on this computer.</p>
+
+  <label for="phone">Phone number</label>
+  <input id="phone" type="tel" inputmode="numeric" placeholder="919876543210" autocomplete="off">
+  <div class="hint">Country code first, digits only. No + or spaces. For India: 91 then the 10-digit number.</div>
+
+  <label for="text">Message</label>
+  <textarea id="text" placeholder="Hello from WAHA!"></textarea>
+
+  <details open>
+    <summary>WAHA settings</summary>
+    <label for="url">WAHA address</label>
+    <input id="url" value="http://localhost:3000">
+    <label for="session">Session name</label>
+    <input id="session" value="session_01m5k7hyr2v55peff6p5xm7eba">
+    <div class="hint">Run <code>curl.exe -H "X-Api-Key: KEY" http://localhost:3000/api/sessions</code> to see your session name.</div>
+    <label for="key">API key</label>
+    <input id="key" type="password" autocomplete="off" placeholder="Your WAHA API key">
+  </details>
+
+  <button id="send">Send message</button>
+  <div id="result" role="status"></div>
+</main>
+
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var btn = $("send"), out = $("result");
+
+  function show(kind, msg) { out.className = kind; out.textContent = msg; }
+
+  btn.addEventListener("click", async function () {
+    var phone = $("phone").value.replace(/\D/g, "");
+    var text = $("text").value.trim();
+    var key = $("key").value.trim();
+    var base = $("url").value.trim().replace(/\/+$/, "");
+    var session = $("session").value.trim();
+
+    if (phone.length < 8) return show("err", "Enter the phone number with country code, digits only.");
+    if (!text) return show("err", "Write a message first.");
+    if (!key) return show("err", "Enter your WAHA API key under WAHA settings.");
+
+    btn.disabled = true; btn.textContent = "Sending...";
+    out.className = "";
+    try {
+      var res = await fetch(base + "/api/sendText", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Api-Key": key },
+        body: JSON.stringify({ session: session, chatId: phone + "@c.us", text: text })
+      });
+      var body = await res.text();
+      if (res.ok) show("ok", "Sent to " + phone + ". Check the chat in WhatsApp.");
+      else show("err", "WAHA returned " + res.status + ":\n" + body.slice(0, 400));
+    } catch (e) {
+      show("err", "Could not reach WAHA at " + base + ".\nCheck that Docker is running and the address is right. If the browser console says 'CORS', see the note in chat.");
+    }
+    btn.disabled = false; btn.textContent = "Send message";
+  });
+</script>
+</body>
+</html>
