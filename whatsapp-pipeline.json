@@ -1,0 +1,129 @@
+{
+  "name": "Send WhatsApp Message via WAHA",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c1000000-0000-4000-8000-000000000001",
+      "name": "Run now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1000000-0000-4000-8000-000000000002",
+              "name": "recipient",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "c1000000-0000-4000-8000-000000000003",
+              "name": "session",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "c1000000-0000-4000-8000-000000000004",
+              "name": "message",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c1000000-0000-4000-8000-000000000005",
+      "name": "Set message details",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const recipient = String($json.recipient ?? '').replace(/\\D/g, '');\nconst session = String($json.session ?? '').trim();\nconst message = String($json.message ?? '').trim();\n\nif (recipient.length < 8 || recipient.length > 15) {\n  throw new Error('Enter the recipient phone number with country code (8 to 15 digits).');\n}\nif (!session) {\n  throw new Error('Enter the name of an active WAHA session.');\n}\nif (!message) {\n  throw new Error('Enter a message to send.');\n}\n\nreturn [{ json: { session, chatId: `${recipient}@c.us`, text: message } }];"
+      },
+      "id": "c1000000-0000-4000-8000-000000000006",
+      "name": "Validate message details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://waha:3000/api/sendText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.WHATSAPP_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { session: $json.session, chatId: $json.chatId, text: $json.text } }}",
+        "options": {}
+      },
+      "id": "c1000000-0000-4000-8000-000000000007",
+      "name": "Send WhatsApp message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        740,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Run now": {
+      "main": [
+        [
+          {
+            "node": "Set message details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set message details": {
+      "main": [
+        [
+          {
+            "node": "Validate message details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate message details": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
