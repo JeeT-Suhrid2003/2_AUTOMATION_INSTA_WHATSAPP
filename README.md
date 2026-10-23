@@ -1,7 +1,7 @@
 # WhatsApp and Instagram automation
 
-This project contains a small browser page for sending WhatsApp messages through
-WAHA and two n8n workflows for Instagram posts.
+This project contains a small browser page and an n8n workflow for sending
+WhatsApp messages through WAHA, plus two n8n workflows for Instagram posts.
 
 ## Requirements
 
@@ -41,6 +41,24 @@ The page sends the key to your configured WAHA server in the `X-Api-Key` header.
 Use it only with a trusted server and avoid sharing screenshots or browser
 details that expose the key. If the browser cannot connect, check that WAHA is
 running and that its CORS settings allow requests from the page's origin.
+
+## WhatsApp n8n workflow
+
+Import `whatsapp-pipeline.json` into n8n. The workflow is manual-triggered to
+prevent an import or schedule from unexpectedly sending messages. In the
+`Set message details` node, provide:
+
+- `recipient`: destination phone number with country code (digits only)
+- `session`: the name of an active WAHA session
+- `message`: the text to send
+
+The workflow validates these values before sending. It posts to
+`http://waha:3000/api/sendText`, which is the WAHA service address when both
+containers are on the Compose network. The `X-Api-Key` header reads
+`WHATSAPP_API_KEY` from the n8n environment. Configure that variable securely
+for the n8n container with the same value WAHA uses; a variable defined only
+for the WAHA container is not available to n8n. Do not save real keys in the
+workflow.
 
 ## Instagram workflows
 
